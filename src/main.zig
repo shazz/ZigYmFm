@@ -1,6 +1,6 @@
 const std = @import("std");
 const ymfm = @cImport({
-    @cInclude("./libymfm.h");
+    @cInclude("libymfm.h");
 });
 
 
