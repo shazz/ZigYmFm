@@ -7,8 +7,8 @@ pub fn build(b: *std.build.Builder) void {
     const libymfm = b.addStaticLibrary("libymfm", null);
     libymfm.setTarget(target);
     libymfm.setBuildMode(mode);
-    libymfm.linkLibC();
-    libymfm.force_pic = true;
+    libymfm.linkLibCpp();
+    libymfm.addIncludePath("./src/libymfm/");
     libymfm.addCSourceFiles(&.{
         "./src/libymfm/ymfm_misc.cpp",
         "./src/lbymfm/ymfm_opl.cpp",
@@ -28,7 +28,7 @@ pub fn build(b: *std.build.Builder) void {
     exe.setBuildMode(mode);
     exe.install();   
     exe.addIncludePath("src");
-    // exe.addLibPath("src");
-    exe.linkSystemLibrary("libymfm"); 
+    exe.addLibraryPath("src");
+    exe.linkLibrary(libymfm); 
 
 }
