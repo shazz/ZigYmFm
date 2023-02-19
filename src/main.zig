@@ -5,6 +5,9 @@ const ymfm = @cImport({
 const emu2149 = @cImport({
     @cInclude("emu2149.h");
 });
+const emu76489 = @cImport({
+    @cInclude("emu76489.h");
+});
 
 const ChipType = enum(u16) {
     CHIP_YM2149 = 0,
@@ -53,7 +56,11 @@ const Notes = enum(u16) {
 	B = @floatToInt(u16, (fYM2149_clock / (16*246.94)))
 };
 
-const dump_b = @embedFile("assets/androids.ymr");
+const dump_ym2149_b = @embedFile("assets/androids.ymr");
+// const dump_sng_b = @embedFile("assets/sn76489_goemon.raw");
+// const dump_sng_b = @embedFile("assets/sn76489_zeliard.raw");
+const dump_sng_b = @embedFile("assets/sn76489_androids.raw");
+// const dump_sng_b = @embedFile("assets/sn76489_gardia.raw");
 
 pub fn play_do(ym2149: u16) void {
   
@@ -124,12 +131,12 @@ pub fn play_libemu2149() !void {
 
     // the YM dump file is composed of 50Hz frames capturing the first 14 YM2149 registers
     // loop on those frames
-    while(dump_loop < dump_b.len / 14) : (dump_loop += 1) {
+    while(dump_loop < dump_ym2149_b.len / 14) : (dump_loop += 1) {
 
         // write the 14 registers
         var i: u32 = 0;
         while( i < 14) : ( i += 1) {
-            emu2149.PSG_writeReg(psg, i, @intCast(u32, dump_b[counter]));
+            emu2149.PSG_writeReg(psg, i, @intCast(u32, dump_ym2149_b[counter]));
             counter += 1;
         }     
 
@@ -148,8 +155,6 @@ pub fn play_libemu2149() !void {
 
     }
     try buf_writer.flush();
-
-
 } 
 
 pub fn play_libymfm() !void {
@@ -159,7 +164,7 @@ pub fn play_libymfm() !void {
 
     // create wav file
     const file = try std.fs.cwd().createFile(
-        "sound.wav",
+        "libymfm2149.wav",
         .{ .read = true },
     );
     defer file.close();
@@ -173,7 +178,7 @@ pub fn play_libymfm() !void {
     var sampling_rate: u32 = ymfm.ymfm_add_chip(ym2149, 2);
 
     std.debug.print("Sampling Rate: {} for master clock: {} Hz\n", .{ sampling_rate, YM2149_clock });
-    std.debug.print("Dump length: {} 50Hz frames = {} seconds\n", .{ dump_b.len / 14, dump_b.len / 14 / 50 });
+    std.debug.print("Dump length: {} 50Hz frames = {} seconds\n", .{ dump_ym2149_b.len / 14, dump_ym2149_b.len / 14 / 50 });
     std.debug.print("Ticks per frame: {}\n", .{ sampling_rate / 50 });
 
     // counters for the YM dump file
@@ -183,12 +188,12 @@ pub fn play_libymfm() !void {
 
     // the YM dump file is composed of 50Hz frames capturing the first 14 YM2149 registers
     // loop on those frames
-    while(dump_loop < dump_b.len / 14) : (dump_loop += 1) {
+    while(dump_loop < dump_ym2149_b.len / 14) : (dump_loop += 1) {
 
         // write the 14 registers
         var i: u32 = 0;
         while( i < 14) : ( i += 1) {
-            ymfm.ymfm_write(ym2149, 0, i, dump_b[counter]);  
+            ymfm.ymfm_write(ym2149, 0, i, dump_ym2149_b[counter]);  
             counter += 1;
         }     
 
@@ -213,9 +218,73 @@ pub fn play_libymfm() !void {
     try buf_writer.flush();
 }
 
+pub fn play_libemu76489() !void {
+
+    // create wav file
+    const file = try std.fs.cwd().createFile(
+        "libemu76489.wav",
+        .{ .read = true },
+    );
+    defer file.close();
+
+    // Get a buffered writer to write in this file
+    var buf_writer = std.io.bufferedWriter(file.writer());
+    const writer = buf_writer.writer();    
+
+    // create SNG
+    // const sng: *emu76489.SNG = emu76489.SNG_new(2e6, 44100); 
+    var asng: emu76489.SNG = undefined;
+    const sng: * emu76489.SNG = &asng;
+
+    // Set clock 
+    emu76489.SNG_set_clock(sng, 3579545);
+    emu76489.SNG_set_rate(sng, 44100);
+
+    // Set sample converter quality
+    emu76489.SNG_set_quality(sng, 0);
+
+    // reset
+    emu76489.SNG_reset(sng);
+
+    // counters for the YM dump file
+    var counter: u64 = 0;
+    var dump_loop: u32 = 0;
+    var audio_buffer: [44100 / 50]i16 = undefined;
+
+    std.debug.print("Dump length: {} 50Hz frames = {} seconds\n", .{ dump_sng_b.len / 11, dump_sng_b.len / 11 / 50 });
+    // the YM dump file is composed of 50Hz frames capturing the 11 registers
+    // loop on those frames
+    while(dump_loop < dump_sng_b.len / 11) : (dump_loop += 1) {
+
+        // write the 11 registers
+        var i: u32 = 0;
+        while( i < 11) : ( i += 1) {
+            emu76489.SNG_writeIO(sng, @intCast(u32, dump_sng_b[counter]));
+            counter += 1;
+        }     
+
+        // generate some sound for 50 Hz, so tick the YM (44100 / 50) times
+        var tick: u32 = 0;
+        while (tick < 44100 / 50) : ( tick += 1) {
+            audio_buffer[tick] = emu76489.SNG_calc(sng);
+            //emu76489.SNG_calc_stereo(sng, audio_buffer[tick]) ;
+        }
+
+         // write sample outputs to the file
+        try writer.writeAll(std.mem.asBytes(&audio_buffer));       
+        
+        if(dump_loop % 1000 == 0) {
+            std.debug.print("{} frames done\n", .{ dump_loop } );
+        }
+
+    }
+    try buf_writer.flush();
+} 
+
 pub fn main() !void {
 
     // try play_libymfm();
-    try play_libemu2149();
+    // try play_libemu2149();
+    try play_libemu76489();
 
 }
