@@ -203,7 +203,6 @@ pub fn play_libymfm() !void {
             const slice = buffer[0]; 
             try writer.writeAll(std.mem.asBytes(&slice));  
         }
-        
         // try writer.writeAll(std.mem.asBytes(&audio_buffer));       
         
         if(dump_loop % 1000 == 0) {
@@ -216,16 +215,7 @@ pub fn play_libymfm() !void {
 
 pub fn main() !void {
 
-    // play_libymfm();
+    // try play_libymfm();
     try play_libemu2149();
 
 }
-
-
-            // const fval = ((@intToFloat(f32, slice)/2147483647) + 1) * 128;
-            // var val: u8 = @floatToInt(u8, fval);
-            // audio_buffer[tick] = val;
-
-            // if(tick == 0) {
-            //     std.debug.print("{} {}\n", .{ fval, val } );
-            // }     
