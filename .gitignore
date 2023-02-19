@@ -3,3 +3,4 @@
 *.a
 main
 zig-cache
+*.wav

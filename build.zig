@@ -4,6 +4,17 @@ pub fn build(b: *std.build.Builder) void {
     const target = b.standardTargetOptions(.{});
     const mode = b.standardReleaseOptions();
 
+    const libemu2149 = b.addStaticLibrary("libemu2149", null);
+    libemu2149.setTarget(target);
+    libemu2149.setBuildMode(mode);
+    libemu2149.addIncludePath("src/libemu2149/");
+    libemu2149.addCSourceFiles(&.{
+        "src/libemu2149/emu2149.c",
+    }, &.{
+        "-Wall",
+        "-std=c99"
+    });
+
     const libymfm = b.addStaticLibrary("libymfm", null);
     libymfm.setTarget(target);
     libymfm.setBuildMode(mode);
@@ -29,10 +40,15 @@ pub fn build(b: *std.build.Builder) void {
     exe.setBuildMode(mode);
     exe.install();   
     exe.addIncludePath("src");
-    exe.addIncludePath("src/libymfm");
     exe.addLibraryPath("src");
+
+    exe.addIncludePath("src/libymfm");
     exe.addLibraryPath("src/libymfm");
     exe.linkLibrary(libymfm); 
+
+    exe.addIncludePath("src/libemu2149");
+    exe.addLibraryPath("src/libemu2149");  
+    exe.linkLibrary(libemu2149); 
 
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
