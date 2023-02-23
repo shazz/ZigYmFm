@@ -8,6 +8,9 @@ const emu2149 = @cImport({
 const emu76489 = @cImport({
     @cInclude("emu76489.h");
 });
+const emu2413 = @cImport({
+    @cInclude("emu2413.h");
+});
 
 const ChipType = enum(u16) {
     CHIP_YM2149 = 0,
@@ -59,8 +62,9 @@ const Notes = enum(u16) {
 const dump_ym2149_b = @embedFile("assets/androids.ymr");
 // const dump_sng_b = @embedFile("assets/sn76489_goemon.raw");
 // const dump_sng_b = @embedFile("assets/sn76489_zeliard.raw");
-const dump_sng_b = @embedFile("assets/sn76489_androids.raw");
+// const dump_sng_b = @embedFile("assets/sn76489_androids.raw");
 // const dump_sng_b = @embedFile("assets/sn76489_gardia.raw");
+const dump_sng_b = @embedFile("assets/sn76489_badapple.raw");
 
 pub fn play_do(ym2149: u16) void {
   
@@ -175,7 +179,7 @@ pub fn play_libymfm() !void {
 
     // add a YM2149, YM2149_clock == 
     // var sampling_rate: u32 = ymfm.ymfm_add_chip(ym2149, YM2149_clock);
-    var sampling_rate: u32 = ymfm.ymfm_add_chip(ym2149, 2);
+    var sampling_rate: u32 = ymfm.ymfm_add_chip(ym2149, YM2149_clock);
 
     std.debug.print("Sampling Rate: {} for master clock: {} Hz\n", .{ sampling_rate, YM2149_clock });
     std.debug.print("Dump length: {} 50Hz frames = {} seconds\n", .{ dump_ym2149_b.len / 14, dump_ym2149_b.len / 14 / 50 });
@@ -184,7 +188,7 @@ pub fn play_libymfm() !void {
     // counters for the YM dump file
     var counter: u64 = 0;
     var dump_loop: u32 = 0;
-    // var audio_buffer: [44100 / 50]u8 = undefined;
+    var audio_buffer: [31250 / 50]i32 = undefined;
 
     // the YM dump file is composed of 50Hz frames capturing the first 14 YM2149 registers
     // loop on those frames
@@ -201,14 +205,15 @@ pub fn play_libymfm() !void {
         // write every sample output to the file
         var tick: u32 = 0;
         var buffer: [2]i32 = undefined;
-        while (tick < 44100 / 50) : ( tick += 1) {
+        while (tick < sampling_rate / 50) : ( tick += 1) {
             ymfm.ymfm_generate(ym2149, 0, &buffer);
 
             // store only left channel
-            const slice = buffer[0]; 
-            try writer.writeAll(std.mem.asBytes(&slice));  
+            // const slice = buffer[0]; 
+            // try writer.writeAll(std.mem.asBytes(&slice));  
+            audio_buffer[tick] = buffer[0];
         }
-        // try writer.writeAll(std.mem.asBytes(&audio_buffer));       
+        try writer.writeAll(std.mem.asBytes(&audio_buffer));       
         
         if(dump_loop % 1000 == 0) {
             std.debug.print("{} frames done\n", .{ dump_loop } );
@@ -238,6 +243,7 @@ pub fn play_libemu76489() !void {
 
     // Set clock 
     emu76489.SNG_set_clock(sng, 3579545);
+    // emu76489.SNG_set_clock(sng, 4e6);
     emu76489.SNG_set_rate(sng, 44100);
 
     // Set sample converter quality
@@ -281,10 +287,54 @@ pub fn play_libemu76489() !void {
     try buf_writer.flush();
 } 
 
+pub fn play_libemu2413() !void {
+
+    // create wav file
+    const file = try std.fs.cwd().createFile(
+        "libemu2413.wav",
+        .{ .read = true },
+    );
+    defer file.close();
+
+    // Get a buffered writer to write in this file
+    var buf_writer = std.io.bufferedWriter(file.writer());
+    const writer = buf_writer.writer();    
+
+    // create SNG
+    const msx_clk: u32 = 3579545;
+    const sample_rate: u32 = 44100;
+    const datalength: u32 = sample_rate * 8;
+
+    const opll: *emu2413.OPLL = emu2413.OPLL_new(msx_clk, sample_rate);
+    // var aopll: emu2413.OPLL = undefined;
+    // const opll: *emu2413.OPLL = &aopll;
+
+    // Set clock 
+    // emu2413.OPLL_reset(opll);
+
+    // Set instrument
+    emu2413.OPLL_writeReg(opll, 0x30, 0x30); // select PIANO Voice to ch1.
+    emu2413.OPLL_writeReg(opll, 0x10, 0x80); // set F-Number(L).
+    emu2413.OPLL_writeReg(opll, 0x20, 0x15); // set BLK & F-Number(H) and keyon.
+
+    var wave_buffer: [datalength]i16 = undefined; //std.mem.zeroes([datalength]i16);
+
+    var i: usize = 0;
+    while (i < datalength) : ( i += 1) {
+
+        wave_buffer[i] = emu2413.OPLL_calc(opll);
+        std.debug.print("{} frame generated\n", .{ i } );
+    }
+    
+    try writer.writeAll(std.mem.asBytes(&wave_buffer));
+    try buf_writer.flush();
+} 
+
 pub fn main() !void {
 
-    // try play_libymfm();
+    try play_libymfm();
     // try play_libemu2149();
-    try play_libemu76489();
+    // try play_libemu76489();
+    // try play_libemu2413();
 
 }
