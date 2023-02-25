@@ -86,8 +86,7 @@ pub fn play_do(ym2149: u16) void {
     // enable channels
     ymfm.ymfm_write(ym2149, 0, @enumToInt(YM2149Registers.IO_MIXER_SETTINGS), 0xf8);   
 }
-
-
+    
 pub fn play_libymfm() !void {
 
     // Get YM2149 enum value, basically 0
@@ -126,17 +125,17 @@ pub fn play_libymfm() !void {
         var i: u32 = 0;
         while( i < 14) : ( i += 1) {
             const reg_val:u8 = dump_ym2149_b[counter];
-            if(reg_val != last_frame[i])
+            if(reg_val != last_frame[i]) {
                 ymfm.ymfm_write(ym2149, 0, i, reg_val);  
-
+            }
             counter += 1;
             last_frame[i] = reg_val;
-        }     
+        } 
 
         // generate some sound for 50 Hz, so tick the YM (sampling_rate / 50) times
         // write every sample output to the file
         var tick: u32 = 0;
-        var buffer: [2]i32 = undefined;
+        var buffer: [2]i32 = std.mem.zeroes([2]i32);
         while (tick < sampling_rate / 50) : ( tick += 1) {
             ymfm.ymfm_generate(ym2149, 0, &buffer);
 
