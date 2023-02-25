@@ -141,13 +141,11 @@ pub fn play_libymfm() !void {
             ymfm.ymfm_generate(ym2149, 0, &buffer);
 
             // store only left channel
-            // const slice = buffer[0]; 
-            // try writer.writeAll(std.mem.asBytes(&slice));  
             audio_buffer[tick] = buffer[0];
         }
         try writer.writeAll(std.mem.asBytes(&audio_buffer));       
         
-    if(dump_loop % 1000 == 0) {
+        if(dump_loop % 1000 == 0) {
             std.debug.print("{} frames done\n", .{ dump_loop } );
         }
 
