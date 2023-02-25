@@ -3,4 +3,4 @@
 *.a
 main
 zig-cache
-*.wav
+.vscode

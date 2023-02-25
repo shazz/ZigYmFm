@@ -95,7 +95,7 @@ pub fn play_libymfm() !void {
 
     // create wav file
     const file = try std.fs.cwd().createFile(
-        "libymfm2149.wav",
+        "wav/libymfm2149.wav",
         .{ .read = true },
     );
     defer file.close();

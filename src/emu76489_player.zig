@@ -13,7 +13,7 @@ pub fn play_libemu76489() !void {
 
     // create wav file
     const file = try std.fs.cwd().createFile(
-        "libemu76489.wav",
+        "wav/libemu76489.wav",
         .{ .read = true },
     );
     defer file.close();
