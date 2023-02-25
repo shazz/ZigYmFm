@@ -114,50 +114,34 @@ public:
     // handle a register write: just queue for now
     virtual void write(uint32_t reg, uint8_t data) override
     {
-        // m_queue.push_back(std::make_pair(reg, data));
-     
-        uint32_t addr1 = 0xffff, addr2 = 0xffff;
-        uint8_t data1 = 0, data2 = 0;
-
-        addr1 = 0 + 2 * ((reg >> 8) & 3);
-        data1 = reg & 0xff;
-
-        addr2 = addr1 + ((m_type == CHIP_YM2149) ? 2 : 1);
-        data2 = data;
-
-        // write to the chip
-        if (addr1 != 0xffff)
-        {
-            m_chip.write(addr1, data1);
-            m_chip.write(addr2, data2);
-        }
+        m_queue.push_back(std::make_pair(reg, data));
     }
 
     // generate one output sample of output
     virtual void generate(int32_t *buffer) override
     {
-        // uint32_t addr1 = 0xffff, addr2 = 0xffff;
-        // uint8_t data1 = 0, data2 = 0;
+        uint32_t addr1 = 0xffff, addr2 = 0xffff;
+        uint8_t data1 = 0, data2 = 0;
 
         // see if there is data to be written; if so, extract it and dequeue
-        // if (!m_queue.empty())
-        // {
-        //     auto front = m_queue.front();
-        //     addr1 = 0 + 2 * ((front.first >> 8) & 3);
-        //     data1 = front.first & 0xff;
-        //     addr2 = addr1 + ((m_type == CHIP_YM2149) ? 2 : 1);
-        //     data2 = front.second;
-        //     m_queue.erase(m_queue.begin());
-        // }
+        if (!m_queue.empty())
+        {
+            auto front = m_queue.front();
+            addr1 = 0 + 2 * ((front.first >> 8) & 3);
+            data1 = front.first & 0xff;
+            addr2 = addr1 + ((m_type == CHIP_YM2149) ? 2 : 1);
+            data2 = front.second;
+            m_queue.erase(m_queue.begin());
+        }
 
         // write to the chip
-        // if (addr1 != 0xffff)
-        // {
-        //     // if (LOG_WRITES)
-        //     //     printf("%10.5f: %s %03X=%02X\n", double(m_clocks) / double(m_chip.sample_rate(m_clock)), m_name.c_str(), data1, data2);
-        //     m_chip.write(addr1, data1);
-        //     m_chip.write(addr2, data2);
-        // }
+        if (addr1 != 0xffff)
+        {
+            // if (LOG_WRITES)
+            //     printf("%10.5f: %s %03X=%02X\n", double(m_clocks) / double(m_chip.sample_rate(m_clock)), m_name.c_str(), data1, data2);
+            m_chip.write(addr1, data1);
+            m_chip.write(addr2, data2);
+        }
 
         // generate at the appropriate sample rate
         m_chip.generate(&m_output);
